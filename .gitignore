@@ -5,6 +5,12 @@ __pycache__/
 # C extensions
 *.so
 
+### Vim ###
+.ropeproject/*
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*~
+
 # Distribution / packaging
 .Python
 env/
