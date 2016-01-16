@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # coding=utf-8
-from __future__ import print_function
-
 import os
 try:
     from urllib import urlencode
@@ -80,31 +78,21 @@ def getUUID():
     response = wdf_urllib.urlopen(request)
     data = response.read().decode('utf-8', 'replace')
 
-    # print(data)
-
     # window.QRLogin.code = 200; window.QRLogin.uuid = "oZwt_bFfRg==";
     regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)"'
     pm = re.search(regx, data)
 
-    code = pm.group(1)
-    uuid = pm.group(2)
+    code, uuid = pm.groups()
 
-    if code == '200':
-        return True
-
-    return False
+    return code == '200'
 
 
 def showQRImage():
     global tip
 
     url = 'https://login.weixin.qq.com/qrcode/' + uuid
-    params = {
-        't': 'webwx',
-        '_': int(time.time()),
-    }
 
-    request = getRequest(url=url, data=urlencode(params))
+    request = getRequest(url=url)
     response = wdf_urllib.urlopen(request)
 
     tip = 1
@@ -423,7 +411,9 @@ def main():
     for Member in MemberList:
         d[Member['UserName']] = (Member['NickName'].encode(
             'utf-8'), Member['RemarkName'].encode('utf-8'))
+
     print('开始查找...')
+
     group_num = int(math.ceil(MemberCount / float(MAX_GROUP_NUM)))
     for i in range(0, group_num):
         UserNames = []
