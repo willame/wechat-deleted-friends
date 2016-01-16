@@ -24,6 +24,10 @@ import math
 import subprocess
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+fn_qrcode = os.path.join(BASE_DIR, 'qrcode.jpg')
+
 h = Http(timeout=5)
 
 headers_templates = {
@@ -45,7 +49,6 @@ MAX_GROUP_NUM = 35  # 每组人数
 INTERFACE_CALLING_INTERVAL = 16  # 接口调用时间间隔, 值设为13时亲测出现"操作太频繁"
 MAX_PROGRESS_LEN = 50
 
-QRImagePath = os.path.join(os.getcwd(), 'qrcode.jpg')
 
 tip = 0
 uuid = ''
@@ -100,28 +103,21 @@ def get_uuid():
     return None
 
 
-def showQRImage():
-    global tip
+def get_qrcode(uuid, filename):
+    url = 'https://login.weixin.qq.com/qrcode/{}'.format(uuid)
+    rsp, content = h.request(url)
 
-    url = 'https://login.weixin.qq.com/qrcode/' + uuid
+    with open(filename, 'wb') as f:
+        f.write(content)
 
-    request = getRequest(url=url)
-    response = wdf_urllib.urlopen(request)
 
-    tip = 1
-
-    f = open(QRImagePath, 'wb')
-    f.write(response.read())
-    f.close()
-
+def open_qrcode(filename):
     if sys.platform.find('darwin') >= 0:
-        subprocess.call(['open', QRImagePath])
+        subprocess.call(['open', filename])
     elif sys.platform.find('linux') >= 0:
-        subprocess.call(['xdg-open', QRImagePath])
+        subprocess.call(['xdg-open', filename])
     else:
-        os.startfile(QRImagePath)
-
-    print('请使用微信扫描二维码以登录')
+        os.startfile(filename)
 
 
 def waitForLogin():
@@ -398,7 +394,10 @@ def main():
         print('获取uuid失败')
         return
 
-    showQRImage(uuid)
+    get_qrcode(uuid, fn_qrcode)
+    open_qrcode(fn_qrcode)
+
+    print('请使用微信扫描二维码以登录')
 
     return
     time.sleep(1)
@@ -406,7 +405,7 @@ def main():
     while waitForLogin() != '200':
         pass
 
-    os.remove(QRImagePath)
+    os.remove(fn_qrcode)
 
     if not login():
         print('登录失败')
