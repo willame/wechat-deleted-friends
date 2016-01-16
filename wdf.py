@@ -1,5 +1,7 @@
-#!/usr/bin/env python
 # coding=utf-8
+import time
+import urllib
+from httplib2 import Http
 import os
 try:
     from urllib import urlencode
@@ -20,6 +22,22 @@ import json
 import sys
 import math
 import subprocess
+
+
+h = Http(timeout=5)
+
+headers_templates = {
+    'Connection': 'keep-alive',
+    'User-Agent': ('Mozilla/5.0 (X11; Linux x86_64)'
+                   'AppleWebKit/537.36 (KHTML, like Gecko)'
+                   'Chrome/44.0.2403.125 Safari/537.36'),
+    'Accept': '*/*',
+    'Accept-Charset': 'UTF-8,*;q=0.5',
+    'Accept-Encoding': 'gzip',
+    'Accept-Language': 'zh-CN,zh;q=0.8',
+    'DNT': '1',
+}
+
 
 DEBUG = False
 
@@ -63,28 +81,23 @@ def getRequest(url, data=None):
         return wdf_urllib.Request(url=url, data=data)
 
 
-def getUUID():
-    global uuid
-
+def get_uuid():
     url = 'https://login.weixin.qq.com/jslogin'
-    params = {
+
+    body = urllib.urlencode({
         'appid': 'wx782c26e4c19acffb',
         'fun': 'new',
-        'lang': 'zh_CN',
-        '_': int(time.time()),
-    }
+        'lang': 'en_US',
+        '_': int(1000*time.time()),
+        })
 
-    request = getRequest(url=url, data=urlencode(params))
-    response = wdf_urllib.urlopen(request)
-    data = response.read().decode('utf-8', 'replace')
+    rsp, content = h.request(url, 'POST', headers=headers_templates, body=body)
 
-    # window.QRLogin.code = 200; window.QRLogin.uuid = "oZwt_bFfRg==";
-    regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)"'
-    pm = re.search(regx, data)
-
-    code, uuid = pm.groups()
-
-    return code == '200'
+    _prog = r'window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)"'
+    m = re.search(_prog, content)
+    if m is not None and m.group(1) == '200':
+        return m.group(2)
+    return None
 
 
 def showQRImage():
@@ -380,11 +393,14 @@ def main():
     except:
         pass
 
-    if not getUUID():
+    uuid = get_uuid()
+    if not uuid:
         print('获取uuid失败')
         return
 
-    showQRImage()
+    showQRImage(uuid)
+
+    return
     time.sleep(1)
 
     while waitForLogin() != '200':

@@ -21,3 +21,16 @@ Mac OS用法:
 `$ python wdf.py`
 
 按指示做即可
+
+
+## 微信流程
+
+1. jslogin 获取 uuid
+
+    简化版 url: `https://login.weixin.qq.com/jslogin?appid=wx782c26e4c19acffb`
+
+    返回: `window.QRLogin.code = 200; window.QRLogin.uuid = "IcBKe40AYg==";`
+
+2. 根据 uuid 获取 qrcode
+
+    url: `https://login.weixin.qq.com/qrcode/IcBKe40AYg==`
