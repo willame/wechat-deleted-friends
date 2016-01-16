@@ -484,30 +484,5 @@ def main():
     print('---------------------------------------------')
 
 
-# windows下编码问题修复
-# http://blog.csdn.net/heyuxuanzee/article/details/8442718
-
-
-class UnicodeStreamFilter:
-
-    def __init__(self, target):
-        self.target = target
-        self.encoding = 'utf-8'
-        self.errors = 'replace'
-        self.encode_to = self.target.encoding
-
-    def write(self, s):
-        if type(s) == str:
-            s = s.decode('utf-8')
-        s = s.encode(self.encode_to, self.errors).decode(self.encode_to)
-        self.target.write(s)
-
-if sys.stdout.encoding == 'cp936':
-    sys.stdout = UnicodeStreamFilter(sys.stdout)
-
 if __name__ == '__main__':
-
-    print('本程序的查询结果可能会引起一些心理上的不适,请小心使用...')
-    print('开始')
     main()
-    print('结束')
