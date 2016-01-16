@@ -120,42 +120,24 @@ def open_qrcode(filename):
         os.startfile(filename)
 
 
-def waitForLogin():
-    global tip, base_uri, redirect_uri
+def is_login(uuid):
+    url = 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login'
+    body = 'uuid=%s&tip=0&_=%s' % (uuid, int(1000*time.time()))
 
-    url = 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s' % (
-        tip, uuid, int(time.time()))
+    lh = Http(timeout=30)
+    rsp, content = lh.request('%s?%s' % (url, body))
 
-    request = getRequest(url=url)
-    response = wdf_urllib.urlopen(request)
-    data = response.read().decode('utf-8', 'replace')
+    _prog = r'window.code=(\d+);(?:\s+window.redirect_uri="(\S+?)";)?'
 
-    # print(data)
-
-    # window.code=500;
-    regx = r'window.code=(\d+);'
-    pm = re.search(regx, data)
-
-    code = pm.group(1)
-
-    if code == '201':  # 已扫描
-        print('成功扫描,请在手机上点击确认以登录')
-        tip = 0
-    elif code == '200':  # 已登录
-        print('正在登录...')
-        regx = r'window.redirect_uri="(\S+?)";'
-        pm = re.search(regx, data)
-        redirect_uri = pm.group(1) + '&fun=new'
-        base_uri = redirect_uri[:redirect_uri.rfind('/')]
-
-        # closeQRImage
-        if sys.platform.find('darwin') >= 0:  # for OSX with Preview
-            os.system("osascript -e 'quit app \"Preview\"'")
-    elif code == '408':  # 超时
-        pass
-    # elif code == '400' or code == '500':
-
-    return code
+    m = re.search(_prog, content)
+    if m is not None:
+        code = m.group(1)
+        if code == '200':  # 已登录
+            print('正在登录...')
+            return m.group(2)  # redirect_uri
+        if code == '201':  # 已扫描
+            print('成功扫描, 请在手机上点击确认以登录')
+    return None
 
 
 def login():
@@ -398,14 +380,16 @@ def main():
     open_qrcode(fn_qrcode)
 
     print('请使用微信扫描二维码以登录')
-
-    return
     time.sleep(1)
 
-    while waitForLogin() != '200':
-        pass
+    while True:
+        redirect_uri = is_login(uuid)
+        if redirect_uri:
+            break
 
     os.remove(fn_qrcode)
+
+    return
 
     if not login():
         print('登录失败')
