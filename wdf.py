@@ -2,11 +2,12 @@
 import time
 import urllib
 from httplib2 import Http
+from lxml import etree
 import os
 try:
     from urllib import urlencode
 except ImportError:
-    from urllib.parse import urlencode
+    from urllib.parse import urlencode  # noqa
 
 try:
     import urllib2 as wdf_urllib
@@ -16,7 +17,6 @@ except ImportError:
     from http.cookiejar import CookieJar
 
 import re
-import time
 import xml.dom.minidom
 import json
 import sys
@@ -49,30 +49,10 @@ MAX_GROUP_NUM = 35  # 每组人数
 INTERFACE_CALLING_INTERVAL = 16  # 接口调用时间间隔, 值设为13时亲测出现"操作太频繁"
 MAX_PROGRESS_LEN = 50
 
-
-tip = 0
-uuid = ''
-
-base_uri = ''
-redirect_uri = ''
-
-skey = ''
-wxsid = ''
-wxuin = ''
-pass_ticket = ''
 deviceId = 'e000000000000000'
-
-BaseRequest = {}
 
 ContactList = []
 My = []
-
-try:
-    xrange
-    range = xrange
-except:
-    # python 3
-    pass
 
 
 def getRequest(url, data=None):
@@ -140,55 +120,26 @@ def is_login(uuid):
     return None
 
 
-def login():
-    global skey, wxsid, wxuin, pass_ticket, BaseRequest
+def login(url):
+    rsp, content = h.request(url, 'POST', headers=headers_templates)
 
-    request = getRequest(url=redirect_uri)
-    response = wdf_urllib.urlopen(request)
-    data = response.read().decode('utf-8', 'replace')
+    if rsp['status'] != '301':
+        return None
 
-    # print(data)
+    required = {
+        'skey',
+        'wxsid',
+        'wxuin',
+        'pass_ticket',
+        }
+    params = {param.tag: param.text
+        for param in etree.fromstring(content)
+        if param.tag in required}
 
-    '''
-        <error>
-            <ret>0</ret>
-            <message>OK</message>
-            <skey>xxx</skey>
-            <wxsid>xxx</wxsid>
-            <wxuin>xxx</wxuin>
-            <pass_ticket>xxx</pass_ticket>
-            <isgrayscale>1</isgrayscale>
-        </error>
-    '''
-
-    doc = xml.dom.minidom.parseString(data)
-    root = doc.documentElement
-
-    for node in root.childNodes:
-        if node.nodeName == 'skey':
-            skey = node.childNodes[0].data
-        elif node.nodeName == 'wxsid':
-            wxsid = node.childNodes[0].data
-        elif node.nodeName == 'wxuin':
-            wxuin = node.childNodes[0].data
-        elif node.nodeName == 'pass_ticket':
-            pass_ticket = node.childNodes[0].data
-
-    # print('skey: %s, wxsid: %s, wxuin: %s, pass_ticket: %s' % (skey, wxsid,
-    # wxuin, pass_ticket))
-
-    if not all((skey, wxsid, wxuin, pass_ticket)):
-        return False
-
-    BaseRequest = {
-        'Uin': int(wxuin),
-        'Sid': wxsid,
-        'Skey': skey,
-        'DeviceID': deviceId,
-    }
-
-    return True
-
+    if all(params.values()) and not (required - set(params.keys())):
+        params['cookie'] = rsp['set-cookie']
+        return params
+    return None  # failed to login
 
 def webwxinit():
 
@@ -250,8 +201,16 @@ def webwxgetcontact():
     MemberList = dic['MemberList']
 
     # 倒序遍历,不然删除的时候出问题..
-    SpecialUsers = ["newsapp", "fmessage", "filehelper", "weibo", "qqmail", "tmessage", "qmessage", "qqsync", "floatbottle", "lbsapp", "shakeapp", "medianote", "qqfriend", "readerapp", "blogapp", "facebookapp", "masssendapp",
-                    "meishiapp", "feedsapp", "voip", "blogappweixin", "weixin", "brandsessionholder", "weixinreminder", "wxid_novlwrv3lqwv11", "gh_22b87fa7cb3c", "officialaccounts", "notification_messages", "wxitil", "userexperience_alarm"]
+    SpecialUsers = [
+        "newsapp", "fmessage", "filehelper", "weibo",
+        "qqmail", "tmessage", "qmessage", "qqsync",
+        "floatbottle", "lbsapp", "shakeapp", "medianote",
+        "qqfriend", "readerapp", "blogapp", "facebookapp", "masssendapp",
+        "meishiapp", "feedsapp", "voip", "blogappweixin", "weixin",
+        "brandsessionholder", "weixinreminder", "wxid_novlwrv3lqwv11",
+        "gh_22b87fa7cb3c", "officialaccounts", "notification_messages",
+        "wxitil", "userexperience_alarm"
+        ]
     for i in range(len(MemberList) - 1, -1, -1):
         Member = MemberList[i]
         if Member['VerifyFlag'] & 8 != 0:  # 公众号/服务号
@@ -363,7 +322,6 @@ def addMember(ChatRoomName, UserNames):
 
 
 def main():
-
     try:
         opener = wdf_urllib.build_opener(
             wdf_urllib.HTTPCookieProcessor(CookieJar()))
@@ -389,11 +347,21 @@ def main():
 
     os.remove(fn_qrcode)
 
-    return
+    params = login(redirect_uri)
 
-    if not login():
-        print('登录失败')
+    if not params:
         return
+
+    base_req = {
+        'Uin': int(params['wxuin']),
+        'Sid': params['wxsid'],
+        'Skey': params['skey'],
+        'DeviceID': deviceId,
+        }
+
+    print base_req
+
+    return
 
     if not webwxinit():
         print('初始化失败')

@@ -51,3 +51,15 @@ Mac OS用法:
     必须发 POST 消息, 返回 301, body 是一个 xml. 再跳转一次即可.
 
     若发 GET 消息, 返回 200, 回到扫二维码登录的首页
+
+    返回 301 时, body 是 xml
+
+        <error>
+            <ret>0</ret>
+            <message>OK</message>
+            <skey>xxx</skey>
+            <wxsid>xxx</wxsid>
+            <wxuin>xxx</wxuin>
+            <pass_ticket>xxx</pass_ticket>
+            <isgrayscale>1</isgrayscale>
+        </error>
