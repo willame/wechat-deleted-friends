@@ -34,3 +34,20 @@ Mac OS用法:
 2. 根据 uuid 获取 qrcode
 
     url: `https://login.weixin.qq.com/qrcode/IcBKe40AYg==`
+
+3. 监听 qrcode 扫描结果
+
+    url: `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?uuid=%s&tip=0&_=timestamp_ms`
+
+    在 response 的 body 中解析 window.code
+
+    - 监听中, 返回 408
+    - 已扫描, 等待手机确认, 返回 201
+    - 手机端已确认, 返回 200, 并携带 `redirect_uri`
+    - 发送 request 时, uuid 不能作为 http body 用 urlencode 处理. 否则 uuid 中的 == 会被转义, 服务端返回 500
+
+4. POST 访问 `redirect_uri` 登录
+
+    必须发 POST 消息, 返回 301, body 是一个 xml. 再跳转一次即可.
+
+    若发 GET 消息, 返回 200, 回到扫二维码登录的首页
